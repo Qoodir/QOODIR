@@ -1,5 +1,8 @@
 name: Build Android APK
 
+- name: Build Web App
+  run: npm run build  # Sesuaikan dengan skrip build Anda (misal: npm run build atau vite build)
+  
 on:
   push:
     branches: [ main ]
