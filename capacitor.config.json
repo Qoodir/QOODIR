@@ -1,6 +1,6 @@
 {
   "appId": "com.Qoodir.app",
   "appName": "QoodirAPP",
-  "webDir": "dist",
+  "webDir": "www",
   "bundledWebRuntime": false
 }
