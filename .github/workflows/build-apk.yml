@@ -1,5 +1,4 @@
 name: Build Android APK
-  run: npm run build  # Sesuaikan dengan skrip build Anda (misal: npm run build atau vite build)
   
 on:
   push:
