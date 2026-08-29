@@ -1,0 +1,2171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katalog Komik, Manga & Pemutar Musik Offline</title>
+    
+    <!-- Library JSZip untuk membaca dan mengekstrak file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --owned-color: #f59e0b;
+            --control-bg: #f1f5f9;
+            --vol-bg: #f8fafc;
+            --vol-owned-bg: #fef3c7;
+            --vol-owned-text: #b45309;
+            --badge-bindup: #f43f5e;
+            --badge-completed: #22c55e;
+            --dropdown-hover: #e2e8f0;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --control-bg: #1e293b;
+            --vol-bg: #334155;
+            --vol-owned-bg: #78350f;
+            --vol-owned-text: #fef3c7;
+            --badge-bindup: #e11d48;
+            --badge-completed: #16a34a;
+            --dropdown-hover: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 10px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding-bottom: 100px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            margin-top: 10px;
+        }
+
+        .header-titles h1 {
+            margin: 0 0 2px 0;
+            color: var(--primary);
+            font-size: 22px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .top-action-btn {
+            background: var(--control-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        .top-action-btn:hover {
+            background: var(--dropdown-hover);
+            transform: scale(1.05);
+        }
+
+        /* Tombol Menu Pop-up Bulat Sejajar di Kanan Bawah */
+        .bottom-menu-wrapper {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bottom-menu-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s, background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .bottom-menu-btn:hover {
+            background: var(--primary-hover);
+            transform: scale(1.05);
+        }
+
+        .top-popup-menu {
+            display: none;
+            flex-direction: column-reverse;
+            gap: 10px;
+            align-items: center;
+            animation: fadeInUp 0.15s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .popup-menu-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s, transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        .popup-menu-item:hover { 
+            background: var(--control-bg); 
+            transform: scale(1.05);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: var(--control-bg);
+            padding: 10px;
+            border-radius: 12px;
+        }
+
+        .search-bar {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: var(--card-bg);
+            color: var(--text);
+            flex: 1;
+            width: 100%;
+        }
+
+        .form-control {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: var(--card-bg);
+            color: var(--text);
+            margin-bottom: 12px;
+        }
+
+        .autocomplete-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .suggestions-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% - 10px);
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 200;
+        }
+
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            gap: 10px;
+        }
+
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: var(--dropdown-hover); }
+
+        .suggestion-icon { font-size: 14px; color: var(--text-muted); flex-shrink: 0; }
+        .suggestion-details { display: flex; flex-direction: column; overflow: hidden; flex: 1; }
+        .suggestion-title { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .suggestion-sub { font-size: 11px; color: var(--text-muted); }
+        .suggestion-arrow { font-size: 12px; color: var(--text-muted); }
+
+        .btn-submit {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .comic-grid {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: 1fr;
+        }
+
+        .comic-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .btn-delete {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+        }
+
+        .comic-info {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 55px;
+        }
+
+        .title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            width: calc(100% - 20px);
+            overflow: hidden;
+            flex-wrap: wrap;
+        }
+
+        .comic-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0;
+            color: var(--primary);
+            text-decoration: underline;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 1;
+            cursor: pointer;
+        }
+
+        .comic-type-badge {
+            font-size: 9px;
+            font-weight: bold;
+            color: white;
+            background-color: var(--badge-bindup);
+            padding: 2px 5px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .comic-completed-badge {
+            font-size: 9px;
+            font-weight: bold;
+            color: white;
+            background-color: var(--badge-completed);
+            padding: 2px 5px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .comic-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+            gap: 8px;
+        }
+
+        .comic-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .comic-owned-status {
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--owned-color);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* MODAL STYLES */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 120;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 20px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            position: relative;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .volume-checklist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .vol-box {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--vol-bg);
+            color: var(--text);
+        }
+
+        .vol-box.owned {
+            background-color: var(--vol-owned-bg);
+            border-color: var(--owned-color);
+            color: var(--vol-owned-text);
+        }
+
+        .vol-box input { display: none; }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            margin-top: 5px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .fetch-status {
+            font-size: 11px;
+            color: var(--primary);
+            margin-top: -8px;
+            margin-bottom: 10px;
+            display: block;
+            min-height: 15px;
+        }
+
+        /* TAMPILAN FULLSCREEN SLIDE */
+        .fullscreen-slide-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg);
+            color: var(--text);
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            box-sizing: border-box;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.25s ease-in-out;
+        }
+
+        .fullscreen-slide-page.active {
+            display: flex;
+            transform: translateY(0);
+        }
+
+        .slide-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .slide-header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-back-slide {
+            background: var(--control-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .slide-body {
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        /* FOLDER ACCORDION & LIST */
+        .pdf-filter-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .pdf-list-container {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .folder-accordion-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px -1px rgba(0,0,0,0.05);
+        }
+
+        .folder-accordion-header {
+            padding: 14px 16px;
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .folder-accordion-header:hover {
+            background: var(--control-bg);
+        }
+
+        .folder-content-list {
+            display: none;
+            border-top: 1px solid var(--border);
+            background: var(--bg);
+            padding: 10px;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .folder-accordion-card.open .folder-content-list {
+            display: flex;
+        }
+
+        .btn-read-folder {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .pdf-item-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 12px 14px;
+            border-radius: 8px;
+        }
+
+        .pdf-item-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .pdf-file-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding-right: 10px;
+        }
+        .pdf-file-name {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pdf-file-size {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .btn-pdf-action {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .btn-pdf-download {
+            background: #3b82f6; 
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        .btn-pdf-delete {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        .btn-pdf-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        #pdf-iframe {
+            width: 100%;
+            height: calc(100vh - 75px);
+            border: none;
+        }
+
+        /* Styling List Video USB */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+        .video-item-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+        .video-title {
+            font-size: 13px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        /* STYLING PEMUTAR MUSIK OFFLINE */
+        .music-item-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .floating-music-player {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+            padding: 12px 20px;
+            z-index: 500;
+            box-sizing: border-box;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .floating-music-player.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-titles">
+            <h1>Katalog Komik</h1>
+            <p style="color: var(--text-muted); margin: 0; font-size: 12px;">Kelola komik, video, dan pemutar musik offline.</p>
+        </div>
+        
+        <div class="header-actions">
+            <!-- Tombol Tambah Komik di sebelah kiri mode gelap -->
+            <button class="top-action-btn" onclick="openAddComicModal()" title="Tambah Komik">➕</button>
+            <button class="top-action-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Ubah Tema">☀️</button>
+        </div>
+    </header>
+
+    <div class="controls">
+        <input type="text" id="search" class="search-bar" placeholder="Cari judul, akasha, atau author komik...">
+    </div>
+
+    <!-- KATALOG UTAMA -->
+    <div class="comic-grid" id="comic-list"></div>
+</div>
+
+<!-- Menu Navigasi Pop-up Bulat Sejajar di Pojok Kanan Bawah -->
+<div class="bottom-menu-wrapper">
+    <button class="bottom-menu-btn" onclick="toggleTopMenu(event)">⚙️</button>
+    <div class="top-popup-menu" id="top-settings-popup">
+        <div class="popup-menu-item" onclick="openMusicPlayerSlide()" title="Pemutar Musik Offline">
+            <span>🎵</span>
+        </div>
+        <div class="popup-menu-item" onclick="openVideoPlayerSlide()" title="Pemutar Video USB">
+            <span>🎬</span>
+        </div>
+        <div class="popup-menu-item" onclick="openPdfStorageSlide()" title="Manga Reader Offline">
+            <span>📖</span>
+        </div>
+    </div>
+</div>
+
+<!-- FLOATING MUSIC PLAYER -->
+<div class="floating-music-player" id="floating-music-player">
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
+            <span style="font-size: 22px;">🎧</span>
+            <div style="display: flex; flex-direction: column; overflow: hidden;">
+                <span id="current-playing-title" style="font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Judul Lagu</span>
+                <span id="current-playing-folder" style="font-size: 10px; color: var(--text-muted);">Folder: -</span>
+            </div>
+        </div>
+        <button onclick="closeFloatingMusic()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);" title="Tutup Pemutar">×</button>
+    </div>
+    
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;">
+        <div style="display: flex; gap: 5px;">
+            <button onclick="playPrevTrack()" class="btn-read-folder" style="padding: 4px 8px;">⏮ Prev</button>
+            <button onclick="playNextTrack()" class="btn-read-folder" style="padding: 4px 8px;">Next ⏭</button>
+        </div>
+        <audio id="global-audio-element" controls style="flex: 1; height: 35px;" onended="playNextTrack()"></audio>
+    </div>
+</div>
+
+<!-- Modal Tambah Komik -->
+<div class="modal" id="add-comic-modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeAddComicModal()">&times;</span>
+        <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--primary);">+ Tambah Komik Baru</h3>
+        <form id="add-comic-form">
+            <label style="font-size: 13px; font-weight: 600;">Judul Komik:</label>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="form-title" class="form-control" placeholder="Ketik kata kunci..." required autocomplete="off">
+                <div id="suggestions-box" class="suggestions-dropdown"></div>
+            </div>
+            <span id="fetch-status" class="fetch-status"></span>
+            
+            <label style="font-size: 13px; font-weight: 600;">Nama Author:</label>
+            <input type="text" id="form-author" class="form-control" placeholder="Masukkan nama pembuat..." required>
+            
+            <label style="font-size: 13px; font-weight: 600;">Total Volume Rilis:</label>
+            <input type="number" id="form-total-vol" class="form-control" min="1" value="12" required>
+
+            <label style="font-size: 13px; font-weight: 600;">Tipe Format Komik:</label>
+            <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="comic-type" value="reguler" checked> Regular</label>
+                <label class="radio-label"><input type="radio" name="comic-type" value="bindup"> Bind-Up</label>
+            </div>
+
+            <button type="submit" class="btn-submit" style="width:100%;">Simpan ke Katalog</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Detail Volume Komik -->
+<div class="modal" id="comic-modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title" style="margin-top: 0; color: var(--primary); font-size: 20px;">Judul Komik</h2>
+        <p id="modal-author" style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">Author</p>
+        
+        <div style="margin: 15px 0; display: flex; align-items: center; gap: 10px; font-size: 14px;">
+            <label>⚙️ Ubah Total Volume:</label>
+            <input type="number" id="modal-input-total-vol" class="form-control" style="width: 70px; padding: 5px; margin-bottom:0;" min="1" onchange="updateTotalVolume()">
+        </div>
+
+        <h4 style="margin-bottom: 5px; color: var(--owned-color); font-size: 14px;">📙 Centang Volume Yang Dimiliki:</h4>
+        <div class="volume-checklist-grid" id="modal-volumes-grid"></div>
+    </div>
+</div>
+
+<!-- SLIDE 1: MANGA READER OFFLINE -->
+<div class="fullscreen-slide-page" id="pdf-storage-slide">
+    <div class="slide-header">
+        <div class="slide-header-title">
+            <button class="btn-back-slide" onclick="closePdfStorageSlide()">← Kembali</button>
+            <h3 style="margin: 0; color: var(--primary); font-size: 18px;">📖 Manga Reader Offline</h3>
+        </div>
+    </div>
+
+    <div class="slide-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px;">Pilih banyak file manga sekaligus untuk di-upload atau disimpan ke internal.</p>
+
+        <div style="background: var(--card-bg); padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+            <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 6px;">1. Pilih File Manga (Bisa pilih banyak sekaligus):</label>
+            <input type="file" id="pdf-file-input" accept="application/pdf, application/zip, .cbz" multiple style="font-size: 13px; width: 100%; margin-bottom: 12px;">
+            
+            <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 6px;">2. Pilih Folder Tujuan:</label>
+            <select id="pdf-folder-select" class="form-control" style="margin-bottom: 12px;" onchange="handleUploadFolderSelectChange()">
+                <option value="Tanpa Folder">📄 Tanpa Folder</option>
+                <option value="__NEW__">➕ Buat Folder Baru...</option>
+            </select>
+
+            <input type="text" id="pdf-new-folder-input" class="form-control" placeholder="Ketik nama folder baru..." style="display: none; margin-bottom: 12px;">
+
+            <div style="display: flex; gap: 8px;">
+                <button onclick="readPdfTemporary()" class="btn-submit" style="flex: 1; background: var(--success); padding: 10px;">⬆️ Upload</button>
+                <button onclick="uploadPdfToStorage()" class="btn-submit" style="flex: 1; padding: 10px;">+ Simpan ke Internal</button>
+            </div>
+        </div>
+
+        <div class="pdf-filter-wrapper">
+            <span style="font-size: 14px; font-weight: bold;">📂 Filter:</span>
+            <select id="pdf-folder-filter" class="form-control" style="margin-bottom: 0; flex: 1;" onchange="loadPdfStorageList()">
+                <option value="ALL">Semua Folder</option>
+            </select>
+            <select id="pdf-status-filter" class="form-control" style="margin-bottom: 0; flex: 1;" onchange="loadPdfStorageList()">
+                <option value="ALL">Semua Status</option>
+                <option value="Belum Dibaca">Belum Dibaca</option>
+                <option value="Sedang Dibaca">Sedang Dibaca</option>
+                <option value="Selesai">Selesai</option>
+            </select>
+        </div>
+
+        <h4 style="margin: 15px 0 10px 0; font-size: 15px;">Daftar File Tersimpan di Internal:</h4>
+        <div id="pdf-list-container" class="pdf-list-container"></div>
+    </div>
+</div>
+
+<!-- SLIDE 2: PEMUTAR VIDEO USB -->
+<div class="fullscreen-slide-page" id="video-player-slide">
+    <div class="slide-header">
+        <div class="slide-header-title">
+            <button class="btn-back-slide" onclick="closeVideoPlayerSlide()">← Kembali</button>
+            <h3 style="margin: 0; color: var(--primary); font-size: 18px;">🎬 Pemutar Video USB / Internal</h3>
+        </div>
+    </div>
+
+    <div class="slide-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px;">
+            Pilih sebuah folder dari perangkat atau Flashdisk USB Anda. Sistem akan melist semua file video yang ada di dalamnya secara otomatis.
+        </p>
+
+        <button onclick="openFolderFromUsb()" class="btn-submit" style="width: 100%; padding: 12px; margin-bottom: 15px;">📂 Pilih Folder Video (USB / Internal)</button>
+
+        <h4 id="video-count-label" style="margin: 10px 0; font-size: 14px; color: var(--text-muted);">Belum ada folder video yang dipilih.</h4>
+        <div id="video-grid-container" class="video-grid"></div>
+    </div>
+</div>
+
+<!-- SLIDE 3: PEMUTAR MUSIK OFFLINE (STORAGE LOKAL) -->
+<div class="fullscreen-slide-page" id="music-player-slide">
+    <div class="slide-header">
+        <div class="slide-header-title">
+            <button class="btn-back-slide" onclick="closeMusicPlayerSlide()">← Kembali</button>
+            <h3 style="margin: 0; color: var(--primary); font-size: 18px;">🎵 Pemutar Musik Offline</h3>
+        </div>
+    </div>
+
+    <div class="slide-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px;">
+            Pilih banyak file musik (.mp3) sekaligus untuk dimasukkan ke playlist sementara atau simpan ke memori internal.
+        </p>
+
+        <!-- Kotak Unggah Musik Offline (Multi-select) -->
+        <div style="background: var(--card-bg); padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+            <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 6px;">1. Pilih File Audio (Bisa pilih banyak sekaligus):</label>
+            <input type="file" id="music-file-input" accept="audio/*" multiple style="font-size: 13px; width: 100%; margin-bottom: 12px;">
+
+            <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 6px;">2. Pilih Folder Playlist Tujuan:</label>
+            <select id="music-folder-select" class="form-control" style="margin-bottom: 12px;" onchange="handleMusicFolderSelectChange()">
+                <option value="Favorit">⭐ Favorit</option>
+                <option value="__NEW__">➕ Buat Folder Playlist Baru...</option>
+            </select>
+
+            <input type="text" id="music-new-folder-input" class="form-control" placeholder="Ketik nama folder baru..." style="display: none; margin-bottom: 12px;">
+
+            <div style="display: flex; gap: 8px;">
+                <button onclick="playMusicTemporary()" class="btn-submit" style="flex: 1; background: var(--success); padding: 10px;">▶ Masukkan Playlist Saja</button>
+                <button onclick="uploadMultipleMusicToStorage()" class="btn-submit" style="flex: 1; padding: 10px;">+ Simpan ke Internal</button>
+            </div>
+        </div>
+
+        <!-- Tombol Putar Folder Gabungan -->
+        <div style="margin-bottom: 20px;">
+            <button onclick="playAllMusicCombined()" class="btn-submit" style="width: 100%; background: var(--success); padding: 12px;">🔀 Putar Semua Musik Gabungan</button>
+        </div>
+
+        <h4 style="margin: 15px 0 10px 0; font-size: 15px;">Daftar Playlist Tersimpan di Internal:</h4>
+        <div id="music-folder-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+</div>
+
+<!-- SLIDE 4: PLAYER TAMPILAN FULLSCREEN UNTUK VIDEO -->
+<div class="fullscreen-slide-page" id="active-video-slide" style="background: #000; z-index: 400;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: rgba(0,0,0,0.8); color: white;">
+        <button class="btn-back-slide" onclick="closeActiveVideo()" style="background: #333; color: #fff; border: 1px solid #555;">← Kembali</button>
+        <span id="active-video-title" style="font-size: 14px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;">Playing Video</span>
+    </div>
+    <div style="display: flex; flex: 1; justify-content: center; align-items: center;">
+        <video id="mx-video-player" controls autoplay crossorigin="anonymous" style="width: 100%; height: 100%; max-height: calc(100vh - 60px); object-fit: contain;"></video>
+    </div>
+</div>
+
+<!-- SLIDE 5: BACA MANGA READER OFFLINE -->
+<div class="fullscreen-slide-page" id="pdf-viewer-slide" style="overflow: hidden;">
+    <div class="slide-header">
+        <div class="slide-header-title">
+            <button class="btn-back-slide" onclick="closePdfViewerSlide()">← Kembali</button>
+            <h3 id="pdf-viewer-title" style="margin: 0; color: var(--primary); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">Manga Reader</h3>
+        </div>
+    </div>
+    <iframe id="pdf-iframe" src=""></iframe>
+    <div id="zip-viewer" style="display: none; width: 100%; height: calc(100vh - 75px); overflow-y: auto; background: var(--bg);"></div>
+</div>
+
+<script>
+    // --- INDEXEDDB UNTUK PENYIMPANAN MANGA & MUSIK OFFLINE ---
+    let db;
+    const request = indexedDB.open("StandaloneAppDatabase", 3);
+    
+    request.onupgradeneeded = function(e) {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("manga_pdfs")) {
+            const store = db.createObjectStore("manga_pdfs", { keyPath: "id", autoIncrement: true });
+            store.createIndex("folder", "folder", { unique: false });
+        }
+        if (!db.objectStoreNames.contains("offline_music")) {
+            const musicStore = db.createObjectStore("offline_music", { keyPath: "id", autoIncrement: true });
+            musicStore.createIndex("folder", "folder", { unique: false });
+        }
+    };
+    
+    request.onsuccess = function(e) { 
+        db = e.target.result; 
+    };
+    request.onerror = function() { console.error("Gagal menginisialisasi IndexedDB"); };
+
+    const offlineDatabase = [
+        { title: "Akasha: Goodnight Punpun", author: "Inio Asano", volumes: 13, keywords: ["akasha", "goodnight punpun", "oyasumi punpun", "punpun", "inio asano"] },
+        { title: "One Piece", author: "Eiichiro Oda", volumes: 108, keywords: ["one piece", "op", "luffy", "strawhat"] },
+        { title: "Naruto", author: "Masashi Kishimoto", volumes: 72, keywords: ["naruto", "shippuden", "uzumaki"] },
+        { title: "Jujutsu Kaisen", author: "Gege Akutami", volumes: 27, keywords: ["jujutsu kaisen", "jjk", "gojo", "itadori"] }
+    ];
+
+    const topSettingsPopup = document.getElementById('top-settings-popup');
+
+    function toggleTopMenu(event) {
+        event.stopPropagation();
+        const isOpen = topSettingsPopup.style.display === 'flex';
+        topSettingsPopup.style.display = isOpen ? 'none' : 'flex';
+    }
+
+    function closeTopMenu() {
+        topSettingsPopup.style.display = 'none';
+    }
+
+    const comicGridEl = document.getElementById('comic-list');
+
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+
+    function updateThemeUI(theme) {
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeToggleBtn.innerText = "🌙";
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            themeToggleBtn.innerText = "☀️";
+        }
+    }
+
+    const savedTheme = localStorage.getItem('theme');
+    updateThemeUI(savedTheme === 'dark' ? 'dark' : 'light');
+
+    function toggleTheme() {
+        const nextTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', nextTheme);
+        updateThemeUI(nextTheme);
+    }
+
+    let comicCatalog = JSON.parse(localStorage.getItem('myComicCatalogFinalTextOnly')) || [
+        { id: 201, title: "Akasha: Goodnight Punpun", author: "Inio Asano", totalVolumes: 13, type: "reguler" },
+        { id: 100, title: "Frieren: Beyond Journey's End", author: "Kanehito Yamada & Tsukasa Abe", totalVolumes: 13, type: "reguler" }
+    ];
+    let ownedVolumesData = JSON.parse(localStorage.getItem('ownedVolumesDataFinalTextOnly')) || {};
+    let currentActiveComicId = null;
+
+    const searchInput = document.getElementById('search');
+    const addComicForm = document.getElementById('add-comic-form');
+    const formTitleInput = document.getElementById('form-title');
+    const formAuthorInput = document.getElementById('form-author');
+    const formVolInput = document.getElementById('form-total-vol');
+    const fetchStatusEl = document.getElementById('fetch-status');
+    const suggestionsBox = document.getElementById('suggestions-box');
+
+    formTitleInput.addEventListener('input', function () {
+        const query = this.value.trim().toLowerCase();
+        suggestionsBox.innerHTML = '';
+
+        if (query.length === 0) {
+            suggestionsBox.style.display = 'none';
+            fetchStatusEl.innerText = '';
+            return;
+        }
+
+        const filtered = offlineDatabase.filter(item => {
+            const matchTitle = item.title.toLowerCase().includes(query);
+            const matchKeyword = item.keywords && item.keywords.some(k => k.toLowerCase().includes(query));
+            return matchTitle || matchKeyword;
+        });
+
+        if (filtered.length > 0) {
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerHTML = `
+                    <span class="suggestion-icon">🔍</span>
+                    <div class="suggestion-details">
+                        <span class="suggestion-title">${item.title}</span>
+                        <span class="suggestion-sub">Komik • ${item.author} (${item.volumes} Vol)</span>
+                    </div>
+                    <span class="suggestion-arrow">↖</span>
+                `;
+                
+                div.addEventListener('click', function () {
+                    formTitleInput.value = item.title;
+                    formAuthorInput.value = item.author;
+                    formVolInput.value = item.volumes;
+                    suggestionsBox.style.display = 'none';
+                    fetchStatusEl.innerText = '⚡ Data ditemukan!';
+                });
+
+                suggestionsBox.appendChild(div);
+            });
+            suggestionsBox.style.display = 'block';
+        } else {
+            suggestionsBox.style.display = 'none';
+            fetchStatusEl.innerText = 'ℹ️ Judul belum ada di database. Silakan isi manual.';
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.autocomplete-wrapper')) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+
+    function sortCatalogBindUpFirst() {
+        comicCatalog.sort((a, b) => {
+            if (a.type === 'bindup' && b.type !== 'bindup') return -1;
+            if (a.type !== 'bindup' && b.type === 'bindup') return 1;
+            return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+        });
+    }
+
+    function renderComics() {
+        sortCatalogBindUpFirst();
+        const searchText = searchInput.value.toLowerCase();
+        comicGridEl.innerHTML = '';
+
+        comicCatalog.forEach(comic => {
+            if (comic.title.toLowerCase().includes(searchText) || comic.author.toLowerCase().includes(searchText)) {
+                const ownedList = ownedVolumesData[comic.id] || [];
+                const totalOwned = ownedList.filter(vol => vol <= comic.totalVolumes).length;
+                const isCompleted = totalOwned === comic.totalVolumes && comic.totalVolumes > 0;
+
+                const card = document.createElement('div');
+                card.className = 'comic-card';
+                card.setAttribute('draggable', true);
+                card.setAttribute('data-id', comic.id);
+
+                const bindUpBadgeHtml = comic.type === 'bindup' ? '<div class="comic-type-badge">Bind-Up</div>' : '';
+                const completedBadgeHtml = isCompleted ? '<div class="comic-completed-badge">Completed</div>' : '';
+
+                card.innerHTML = `
+                    <button class="btn-delete" onclick="deleteComic(event, ${comic.id})">×</button>
+                    <div class="comic-clickable-area" onclick="openModal(${comic.id})">
+                        <div class="comic-info">
+                            <div class="title-wrapper">
+                                <h3 class="comic-title">${comic.title}</h3>${bindUpBadgeHtml}${completedBadgeHtml}
+                            </div>
+                            <div class="comic-meta-row">
+                                <div class="comic-meta">${comic.author}</div>
+                                <div class="comic-owned-status">📦 ${totalOwned}/${comic.totalVolumes} Vol</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('dragstart', () => card.classList.add('dragging'));
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                    saveNewOrder();
+                });
+
+                comicGridEl.appendChild(card);
+            }
+        });
+    }
+
+    comicGridEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(comicGridEl, e.clientX, e.clientY);
+        const draggingCard = document.querySelector('.dragging');
+        if (afterElement == null) {
+            comicGridEl.appendChild(draggingCard);
+        } else {
+            comicGridEl.insertBefore(draggingCard, afterElement);
+        }
+    });
+
+    function getDragAfterElement(container, x, y) {
+        const dragElements = [...container.querySelectorAll('.comic-card:not(.dragging)')];
+
+        return dragElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offsetY = y - box.top - box.height / 2;
+
+            if (offsetY < 0) {
+                if (offsetY > closest.offset || closest.offset === Number.NEGATIVE_INFINITY) {
+                    return { offset: offsetY, element: child };
+                }
+            }
+            return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function saveNewOrder() {
+        const currentCards = [...comicGridEl.querySelectorAll('.comic-card')];
+        const newOrderedCatalog = [];
+
+        currentCards.forEach(card => {
+            const id = parseInt(card.getAttribute('data-id'));
+            const comic = comicCatalog.find(c => c.id === id);
+            if (comic) newOrderedCatalog.push(comic);
+        });
+
+        comicCatalog.forEach(comic => {
+            if (!newOrderedCatalog.find(c => c.id === comic.id)) {
+                newOrderedCatalog.push(comic);
+            }
+        });
+
+        comicCatalog = newOrderedCatalog;
+        localStorage.setItem('myComicCatalogFinalTextOnly', JSON.stringify(comicCatalog));
+    }
+
+    function openModal(id) {
+        currentActiveComicId = id;
+        const comic = comicCatalog.find(c => c.id === id);
+        if (!comic) return;
+        document.getElementById('modal-title').innerText = comic.title;
+        document.getElementById('modal-author').innerText = comic.author;
+        document.getElementById('modal-input-total-vol').value = comic.totalVolumes;
+        renderModalVolumes(comic);
+        document.getElementById('comic-modal').style.display = 'flex';
+    }
+
+    function renderModalVolumes(comic) {
+        const grid = document.getElementById('modal-volumes-grid');
+        grid.innerHTML = '';
+        const ownedList = ownedVolumesData[comic.id] || [];
+        for (let i = 1; i <= comic.totalVolumes; i++) {
+            const isOwned = ownedList.includes(i);
+            const box = document.createElement('label');
+            box.className = `vol-box ${isOwned ? 'owned' : ''}`;
+            box.innerHTML = `<input type="checkbox" ${isOwned ? 'checked' : ''} onchange="toggleVolumeOwned(${comic.id}, ${i})">Vol ${i}`;
+            grid.appendChild(box);
+        }
+    }
+
+    function toggleVolumeOwned(comicId, volNum) {
+        if (!ownedVolumesData[comicId]) ownedVolumesData[comicId] = [];
+        if (ownedVolumesData[comicId].includes(volNum)) {
+            ownedVolumesData[comicId] = ownedVolumesData[comicId].filter(v => v !== volNum);
+        } else {
+            ownedVolumesData[comicId].push(volNum);
+        }
+        localStorage.setItem('ownedVolumesDataFinalTextOnly', JSON.stringify(ownedVolumesData));
+        renderModalVolumes(comicCatalog.find(c => c.id === comicId));
+        renderComics();
+    }
+
+    function updateTotalVolume() {
+        const newTotal = parseInt(document.getElementById('modal-input-total-vol').value) || 1;
+        const comic = comicCatalog.find(c => c.id === currentActiveComicId);
+        if (comic) {
+            comic.totalVolumes = newTotal;
+            localStorage.setItem('myComicCatalogFinalTextOnly', JSON.stringify(comicCatalog));
+            renderModalVolumes(comic);
+            renderComics();
+        }
+    }
+
+    // --- MANAJEMEN PENYIMPANAN MANGA OFFLINE ---
+    function openPdfStorageSlide() {
+        closeTopMenu();
+        loadPdfFoldersUI();
+        loadPdfStorageList();
+        document.getElementById('pdf-storage-slide').classList.add('active');
+    }
+
+    function closePdfStorageSlide() {
+        document.getElementById('pdf-storage-slide').classList.remove('active');
+    }
+
+    function handleUploadFolderSelectChange() {
+        const select = document.getElementById('pdf-folder-select');
+        const newInput = document.getElementById('pdf-new-folder-input');
+        if (select.value === '__NEW__') {
+            newInput.style.display = 'block';
+            newInput.focus();
+        } else {
+            newInput.style.display = 'none';
+            newInput.value = '';
+        }
+    }
+
+    function loadPdfFoldersUI() {
+        if (!db) return;
+        const tx = db.transaction("manga_pdfs", "readonly");
+        const store = tx.objectStore("manga_pdfs");
+        const request = store.getAll();
+
+        request.onsuccess = function() {
+            const allPdfs = request.result;
+            const foldersSet = new Set();
+
+            allPdfs.forEach(pdf => {
+                if (pdf.folder && pdf.folder !== "Tanpa Folder") {
+                    foldersSet.add(pdf.folder);
+                }
+            });
+
+            const uploadSelect = document.getElementById('pdf-folder-select');
+            const currentUploadVal = uploadSelect.value;
+            uploadSelect.innerHTML = `
+                <option value="Tanpa Folder">📄 Tanpa Folder</option>
+                <option value="__NEW__">➕ Buat Folder Baru...</option>
+            `;
+
+            foldersSet.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.innerText = "📁 " + f;
+                uploadSelect.insertBefore(opt, uploadSelect.lastElementChild);
+            });
+
+            if ([...uploadSelect.options].some(o => o.value === currentUploadVal)) {
+                uploadSelect.value = currentUploadVal;
+            } else {
+                uploadSelect.value = "Tanpa Folder";
+            }
+            handleUploadFolderSelectChange();
+
+            const filterSelect = document.getElementById('pdf-folder-filter');
+            const currentFilterVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="ALL">Semua Folder</option><option value="Tanpa Folder">📄 Tanpa Folder</option>';
+
+            foldersSet.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.innerText = "📁 " + f;
+                filterSelect.appendChild(opt);
+            });
+
+            if ([...filterSelect.options].some(o => o.value === currentFilterVal)) {
+                filterSelect.value = currentFilterVal;
+            } else {
+                filterSelect.value = "ALL";
+            }
+        };
+    }
+
+    function readPdfTemporary() {
+        const input = document.getElementById('pdf-file-input');
+        if (!input.files || input.files.length === 0) {
+            alert("Pilih file manga terlebih dahulu!");
+            return;
+        }
+        const file = input.files[0];
+        const fileNameLower = file.name.toLowerCase();
+        const isPdf = file.type === "application/pdf";
+        const isZip = fileNameLower.endsWith('.zip') || fileNameLower.endsWith('.cbz');
+
+        if (!isPdf && !isZip) {
+            alert("Format file harus .pdf, .zip, atau .cbz!");
+            return;
+        }
+
+        document.getElementById('pdf-viewer-title').innerText = file.name + " (Uploaded)";
+        document.getElementById('pdf-viewer-slide').classList.add('active');
+        
+        const iframe = document.getElementById('pdf-iframe');
+        const zipViewer = document.getElementById('zip-viewer');
+
+        iframe.style.display = 'none';
+        zipViewer.style.display = 'none';
+
+        if (isZip) {
+            zipViewer.style.display = 'block';
+            zipViewer.innerHTML = '<div style="padding:20px; text-align:center;">Mengekstrak komik, mohon tunggu...</div>';
+            
+            JSZip.loadAsync(file).then(function(zip) {
+                zipViewer.innerHTML = '';
+                const imageFiles = Object.keys(zip.files).filter(name => name.match(/\.(jpg|jpeg|png|webp)$/i)).sort();
+                
+                imageFiles.forEach(function (filename) {
+                    zip.files[filename].async("blob").then(function (fileData) {
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(fileData);
+                        img.style.width = '100%';
+                        img.style.display = 'block';
+                        zipViewer.appendChild(img);
+                    });
+                });
+            });
+        } else {
+            iframe.style.display = 'block';
+            iframe.src = URL.createObjectURL(file);
+        }
+    }
+
+    function uploadPdfToStorage() {
+        const input = document.getElementById('pdf-file-input');
+        const folderSelect = document.getElementById('pdf-folder-select');
+        const newFolderInput = document.getElementById('pdf-new-folder-input');
+
+        if (!input.files || input.files.length === 0) {
+            alert("Pilih file terlebih dahulu!");
+            return;
+        }
+        
+        const filesArray = Array.from(input.files);
+        let targetFolder = folderSelect.value;
+        if (targetFolder === '__NEW__') {
+            targetFolder = newFolderInput.value.trim() || "Tanpa Folder";
+        }
+
+        const tx = db.transaction("manga_pdfs", "readwrite");
+        const store = tx.objectStore("manga_pdfs");
+
+        filesArray.forEach(file => {
+            const pdfRecord = {
+                fileName: file.name,
+                fileSize: (file.size / (1024 * 1024)).toFixed(2) + " MB",
+                fileData: file,
+                folder: targetFolder,
+                uploadedAt: new Date().toLocaleDateString('id-ID'),
+                status: "Belum Dibaca",
+                bookmark: ""
+            };
+            store.add(pdfRecord);
+        });
+
+        tx.oncomplete = function() {
+            input.value = "";
+            newFolderInput.value = "";
+            folderSelect.value = targetFolder;
+            loadPdfFoldersUI();
+            loadPdfStorageList();
+            alert(`Berhasil menyimpan ${filesArray.length} file manga ke penyimpanan internal!`);
+        };
+    }
+
+    async function downloadPdfToDeviceFolder(pdfId) {
+        if (!db) return;
+        const tx = db.transaction("manga_pdfs", "readonly");
+        const store = tx.objectStore("manga_pdfs");
+        const req = store.get(pdfId);
+
+        req.onsuccess = async function() {
+            const record = req.result;
+            if (record && record.fileData) {
+                try {
+                    const dirHandle = await window.showDirectoryPicker();
+                    const xxxDir = await dirHandle.getDirectoryHandle("xxx", { create: true });
+                    const mangaDir = await xxxDir.getDirectoryHandle("manga", { create: true });
+
+                    const fileHandle = await mangaDir.getFileHandle(record.fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(record.fileData);
+                    await writable.close();
+
+                    alert(`Sukses mendownload file ke folder perangkat: xxx/manga/${record.fileName}`);
+                } catch (err) {
+                    console.log("Download dibatalkan atau tidak diizinkan.", err);
+                }
+            }
+        };
+    }
+
+    function generatePdfItemHTML(pdf, fileIcon) {
+        return `
+            <div class="pdf-item-card">
+                <div class="pdf-item-top">
+                    <div class="pdf-file-info">
+                        <span class="pdf-file-name" title="${pdf.fileName}">${fileIcon} ${pdf.fileName}</span>
+                        <span class="pdf-file-size">${pdf.fileSize} • ${pdf.uploadedAt}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; flex-shrink: 0;">
+                        <button class="btn-pdf-action" onclick="readPdf(${pdf.id})">Buka</button>
+                        <button class="btn-pdf-download" onclick="downloadPdfToDeviceFolder(${pdf.id})" title="Download ke Folder xxx/manga">📥 Download</button>
+                        <button class="btn-pdf-delete" onclick="deletePdf(${pdf.id})">×</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function loadPdfStorageList() {
+        const container = document.getElementById('pdf-list-container');
+        const selectedFolder = document.getElementById('pdf-folder-filter').value;
+        const selectedStatus = document.getElementById('pdf-status-filter') ? document.getElementById('pdf-status-filter').value : "ALL";
+        container.innerHTML = "Memuat daftar file...";
+
+        if (!db) return;
+        const tx = db.transaction("manga_pdfs", "readonly");
+        const store = tx.objectStore("manga_pdfs");
+        const request = store.getAll();
+
+        request.onsuccess = function() {
+            let allPdfs = request.result;
+            container.innerHTML = "";
+
+            if (selectedFolder !== "ALL") {
+                allPdfs = allPdfs.filter(pdf => (pdf.folder || "Tanpa Folder") === selectedFolder);
+            }
+            if (selectedStatus !== "ALL") {
+                allPdfs = allPdfs.filter(pdf => (pdf.status || "Belum Dibaca") === selectedStatus);
+            }
+
+            if (allPdfs.length === 0) {
+                container.innerHTML = "<span style='font-size:13px; color:var(--text-muted); text-align:center; display:block; padding: 30px 0;'>Tidak ada file ditemukan.</span>";
+                return;
+            }
+
+            const groupedFiles = {};
+            allPdfs.forEach(pdf => {
+                const folderName = pdf.folder || "Tanpa Folder";
+                if (!groupedFiles[folderName]) groupedFiles[folderName] = [];
+                groupedFiles[folderName].push(pdf);
+            });
+
+            const folderNames = Object.keys(groupedFiles).sort();
+
+            folderNames.forEach(folder => {
+                if (folder === "Tanpa Folder") {
+                    groupedFiles[folder].forEach(pdf => {
+                        const nameLower = pdf.fileName.toLowerCase();
+                        let fileIcon = nameLower.match(/\.(zip|cbz)$/) ? "📦" : "📄";
+
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = generatePdfItemHTML(pdf, fileIcon);
+                        container.appendChild(tempDiv.firstElementChild);
+                    });
+                } else {
+                    const card = document.createElement('div');
+                    card.className = 'folder-accordion-card';
+                    const filesInFolder = groupedFiles[folder];
+
+                    let filesHtml = '';
+                    filesInFolder.forEach(pdf => {
+                        const nameLower = pdf.fileName.toLowerCase();
+                        let fileIcon = nameLower.match(/\.(zip|cbz)$/) ? "📦" : "📄";
+                        filesHtml += generatePdfItemHTML(pdf, fileIcon);
+                    });
+
+                    card.innerHTML = `
+                        <div class="folder-accordion-header" onclick="toggleFolderAccordion(this)">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span>📖</span><span>${folder}</span> 
+                                <span style="font-size:11px; color:var(--text-muted); font-weight:normal;">(${filesInFolder.length} File)</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <button class="btn-read-folder" onclick="event.stopPropagation(); readFolderCombined('${folder}')">▶ Baca Gabung</button>
+                                <span class="accordion-arrow">▼</span>
+                            </div>
+                        </div>
+                        <div class="folder-content-list">
+                            ${filesHtml}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+        };
+    }
+
+    function toggleFolderAccordion(headerEl) {
+        const card = headerEl.parentElement;
+        card.classList.toggle('open');
+        const arrow = headerEl.querySelector('.accordion-arrow');
+        arrow.innerText = card.classList.contains('open') ? '▲' : '▼';
+    }
+
+    function readPdf(pdfId) {
+        const tx = db.transaction("manga_pdfs", "readonly");
+        const store = tx.objectStore("manga_pdfs");
+        const req = store.get(pdfId);
+
+        req.onsuccess = function() {
+            const record = req.result;
+            if (record) {
+                document.getElementById('pdf-viewer-title').innerText = record.fileName;
+                document.getElementById('pdf-viewer-slide').classList.add('active');
+                
+                const iframe = document.getElementById('pdf-iframe');
+                const zipViewer = document.getElementById('zip-viewer');
+
+                iframe.style.display = 'none';
+                zipViewer.style.display = 'none';
+
+                const nameLower = record.fileName.toLowerCase();
+
+                if (nameLower.match(/\.(zip|cbz)$/)) {
+                    zipViewer.style.display = 'block';
+                    zipViewer.innerHTML = '<div style="padding:20px; text-align:center;">Mengekstrak komik, mohon tunggu...</div>';
+                    
+                    JSZip.loadAsync(record.fileData).then(function(zip) {
+                        zipViewer.innerHTML = '';
+                        const imageFiles = Object.keys(zip.files).filter(name => name.match(/\.(jpg|jpeg|png|webp)$/i)).sort();
+                        
+                        imageFiles.forEach(function (filename) {
+                            zip.files[filename].async("blob").then(function (fileData) {
+                                const img = document.createElement('img');
+                                img.src = URL.createObjectURL(fileData);
+                                img.style.width = '100%';
+                                img.style.display = 'block';
+                                zipViewer.appendChild(img);
+                            });
+                        });
+                    });
+                } else {
+                    iframe.style.display = 'block';
+                    iframe.src = URL.createObjectURL(record.fileData);
+                }
+            }
+        };
+    }
+
+    function readFolderCombined(folderName) {
+        if (!db) return;
+        const tx = db.transaction("manga_pdfs", "readonly");
+        const store = tx.objectStore("manga_pdfs");
+        const req = store.getAll();
+
+        req.onsuccess = async function() {
+            const allPdfs = req.result;
+            const folderFiles = allPdfs.filter(pdf => (pdf.folder || "Tanpa Folder") === folderName && pdf.fileName.toLowerCase().match(/\.(zip|cbz)$/));
+
+            if (folderFiles.length === 0) return;
+            folderFiles.sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, {numeric: true, sensitivity: 'base'}));
+
+            document.getElementById('pdf-viewer-title').innerText = "Folder: " + folderName + " (Full Vol)";
+            document.getElementById('pdf-viewer-slide').classList.add('active');
+
+            const iframe = document.getElementById('pdf-iframe');
+            const zipViewer = document.getElementById('zip-viewer');
+
+            iframe.style.display = 'none';
+            zipViewer.style.display = 'block';
+            zipViewer.innerHTML = '<div style="padding:20px; text-align:center;">Menggabungkan volume folder...</div>';
+
+            try {
+                zipViewer.innerHTML = '';
+                for (const record of folderFiles) {
+                    const zip = await JSZip.loadAsync(record.fileData);
+                    const imageFiles = Object.keys(zip.files).filter(name => name.match(/\.(jpg|jpeg|png|webp)$/i)).sort();
+
+                    for (const filename of imageFiles) {
+                        const fileData = await zip.files[filename].async("blob");
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(fileData);
+                        img.style.width = '100%';
+                        img.style.display = 'block';
+                        zipViewer.appendChild(img);
+                    }
+                }
+            } catch (err) {
+                zipViewer.innerHTML = '<div style="padding:20px; color:red; text-align:center;">Gagal memproses folder.</div>';
+            }
+        };
+    }
+
+    function deletePdf(pdfId) {
+        if (confirm("Hapus file manga ini?")) {
+            const tx = db.transaction("manga_pdfs", "readwrite");
+            const store = tx.objectStore("manga_pdfs");
+            store.delete(pdfId);
+            tx.oncomplete = function() {
+                loadPdfFoldersUI();
+                loadPdfStorageList();
+            };
+        }
+    }
+
+    function closePdfViewerSlide() {
+        document.getElementById('pdf-iframe').src = "";
+        document.getElementById('zip-viewer').innerHTML = "";
+        document.getElementById('pdf-viewer-slide').classList.remove('active');
+    }
+
+    // --- FITUR PEMUTAR MUSIK OFFLINE ---
+    let currentActiveQueue = []; 
+    let currentQueueIndex = 0;   
+
+    function openMusicPlayerSlide() {
+        closeTopMenu();
+        loadMusicFoldersUI();
+        loadMusicStorageList();
+        document.getElementById('music-player-slide').classList.add('active');
+    }
+
+    function closeMusicPlayerSlide() {
+        document.getElementById('music-player-slide').classList.remove('active');
+    }
+
+    function handleMusicFolderSelectChange() {
+        const select = document.getElementById('music-folder-select');
+        const newInput = document.getElementById('music-new-folder-input');
+        if (select.value === '__NEW__') {
+            newInput.style.display = 'block';
+            newInput.focus();
+        } else {
+            newInput.style.display = 'none';
+            newInput.value = '';
+        }
+    }
+
+    function loadMusicFoldersUI() {
+        if (!db) return;
+        const tx = db.transaction("offline_music", "readonly");
+        const store = tx.objectStore("offline_music");
+        const request = store.getAll();
+
+        request.onsuccess = function() {
+            const allTracks = request.result;
+            const foldersSet = new Set();
+
+            allTracks.forEach(track => {
+                if (track.folder) foldersSet.add(track.folder);
+            });
+
+            const uploadSelect = document.getElementById('music-folder-select');
+            const currentUploadVal = uploadSelect.value;
+            uploadSelect.innerHTML = `
+                <option value="Favorit">⭐ Favorit</option>
+                <option value="__NEW__">➕ Buat Folder Playlist Baru...</option>
+            `;
+
+            foldersSet.forEach(f => {
+                if (f !== "Favorit") {
+                    const opt = document.createElement('option');
+                    opt.value = f;
+                    opt.innerText = "📁 " + f;
+                    uploadSelect.insertBefore(opt, uploadSelect.lastElementChild);
+                }
+            });
+
+            if ([...uploadSelect.options].some(o => o.value === currentUploadVal)) {
+                uploadSelect.value = currentUploadVal;
+            } else {
+                uploadSelect.value = "Favorit";
+            }
+            handleMusicFolderSelectChange();
+        };
+    }
+
+    function playMusicTemporary() {
+        const input = document.getElementById('music-file-input');
+        if (!input.files || input.files.length === 0) {
+            alert("Pilih file audio (.mp3) terlebih dahulu!");
+            return;
+        }
+
+        const filesArray = Array.from(input.files);
+        currentActiveQueue = filesArray.map(file => ({
+            title: file.name.replace(/\.[^/.]+$/, ""),
+            fileData: file,
+            folder: "Sementara"
+        }));
+        currentQueueIndex = 0;
+        playCurrentQueueItem();
+    }
+
+    function uploadMultipleMusicToStorage() {
+        const input = document.getElementById('music-file-input');
+        const folderSelect = document.getElementById('music-folder-select');
+        const newFolderInput = document.getElementById('music-new-folder-input');
+
+        if (!input.files || input.files.length === 0) {
+            alert("Pilih file audio (.mp3) terlebih dahulu!");
+            return;
+        }
+
+        let targetFolder = folderSelect.value;
+        if (targetFolder === '__NEW__') {
+            targetFolder = newFolderInput.value.trim() || "Favorit";
+        }
+
+        const filesArray = Array.from(input.files);
+        const tx = db.transaction("offline_music", "readwrite");
+        const store = tx.objectStore("offline_music");
+
+        filesArray.forEach(file => {
+            const musicRecord = {
+                title: file.name.replace(/\.[^/.]+$/, ""),
+                fileName: file.name,
+                fileData: file,
+                folder: targetFolder,
+                uploadedAt: new Date().toLocaleDateString('id-ID')
+            };
+            store.add(musicRecord);
+        });
+
+        tx.oncomplete = function() {
+            input.value = "";
+            newFolderInput.value = "";
+            loadMusicFoldersUI();
+            loadMusicStorageList();
+            alert(`Berhasil menyimpan ${filesArray.length} lagu ke penyimpanan internal!`);
+        };
+    }
+
+    async function downloadMusicToDeviceFolder(trackId) {
+        if (!db) return;
+        const tx = db.transaction("offline_music", "readonly");
+        const store = tx.objectStore("offline_music");
+        const req = store.get(trackId);
+
+        req.onsuccess = async function() {
+            const record = req.result;
+            if (record && record.fileData) {
+                try {
+                    const dirHandle = await window.showDirectoryPicker();
+                    const xxxDir = await dirHandle.getDirectoryHandle("xxx", { create: true });
+                    const musicDir = await xxxDir.getDirectoryHandle("music", { create: true });
+
+                    const fileHandle = await musicDir.getFileHandle(record.fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(record.fileData);
+                    await writable.close();
+
+                    alert(`Sukses mendownload lagu ke folder perangkat: xxx/music/${record.fileName}`);
+                } catch (err) {
+                    console.log("Download dibatalkan atau tidak diizinkan.", err);
+                }
+            }
+        };
+    }
+
+    function loadMusicStorageList() {
+        const container = document.getElementById('music-folder-container');
+        container.innerHTML = "Memuat daftar musik...";
+
+        if (!db) return;
+        const tx = db.transaction("offline_music", "readonly");
+        const store = tx.objectStore("offline_music");
+        const request = store.getAll();
+
+        request.onsuccess = function() {
+            const allTracks = request.result;
+            container.innerHTML = "";
+
+            if (allTracks.length === 0) {
+                container.innerHTML = "<span style='font-size:13px; color:var(--text-muted); text-align:center; display:block; padding: 20px;'>Belum ada lagu offline tersimpan.</span>";
+                return;
+            }
+
+            const grouped = {};
+            allTracks.forEach(track => {
+                const fName = track.folder || "Favorit";
+                if (!grouped[fName]) grouped[fName] = [];
+                grouped[fName].push(track);
+            });
+
+            Object.keys(grouped).sort().forEach(folderName => {
+                const tracksInFolder = grouped[folderName];
+
+                let tracksHtml = '';
+                tracksInFolder.forEach(t => {
+                    tracksHtml += `
+                        <div class="music-item-card">
+                            <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1; padding-right: 10px;">
+                                <span style="font-size: 18px;">🎵</span>
+                                <span style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.title}">${t.title}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                <button class="btn-pdf-action" onclick="playOfflineTrack(${t.id})">Putar</button>
+                                <button class="btn-pdf-download" onclick="downloadMusicToDeviceFolder(${t.id})" title="Download ke Folder xxx/music">📥 Download</button>
+                                <button class="btn-pdf-delete" onclick="deleteMusicTrack(${t.id})">×</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                const card = document.createElement('div');
+                card.className = 'folder-accordion-card';
+                card.innerHTML = `
+                    <div class="folder-accordion-header" onclick="toggleFolderAccordion(this)">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span>📁</span><span>${folderName}</span> 
+                            <span style="font-size:11px; color:var(--text-muted); font-weight:normal;">(${tracksInFolder.length} Lagu)</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <button class="btn-read-folder" onclick="event.stopPropagation(); playFolderOfflineCombined('${folderName}')">▶ Putar Folder</button>
+                            <span class="accordion-arrow">▼</span>
+                        </div>
+                    </div>
+                    <div class="folder-content-list">
+                        ${tracksHtml}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        };
+    }
+
+    function playOfflineTrack(trackId) {
+        if (!db) return;
+        const tx = db.transaction("offline_music", "readonly");
+        const store = tx.objectStore("offline_music");
+        const req = store.getAll();
+
+        req.onsuccess = function() {
+            const allTracks = req.result;
+            const targetTrack = allTracks.find(t => t.id === trackId);
+            if (!targetTrack) return;
+
+            currentActiveQueue = allTracks;
+            currentQueueIndex = allTracks.findIndex(t => t.id === trackId);
+            playCurrentQueueItem();
+        };
+    }
+
+    function playFolderOfflineCombined(folderName) {
+        if (!db) return;
+        const tx = db.transaction("offline_music", "readonly");
+        const store = tx.objectStore("offline_music");
+        const req = store.getAll();
+
+        req.onsuccess = function() {
+            const allTracks = req.result;
+            const folderTracks = allTracks.filter(t => (t.folder || "Favorit") === folderName);
+            if (folderTracks.length === 0) return;
+
+            currentActiveQueue = folderTracks;
+            currentQueueIndex = 0;
+            playCurrentQueueItem();
+        };
+    }
+
+    function playAllMusicCombined() {
+        if (!db) return;
+        const tx = db.transaction("offline_music", "readonly");
+        const store = tx.objectStore("offline_music");
+        const req = store.getAll();
+
+        req.onsuccess = function() {
+            const allTracks = req.result;
+            if (allTracks.length === 0) {
+                alert("Belum ada lagu offline dalam penyimpanan.");
+                return;
+            }
+
+            currentActiveQueue = allTracks;
+            currentQueueIndex = 0;
+            playCurrentQueueItem();
+        };
+    }
+
+    function playCurrentQueueItem() {
+        if (currentActiveQueue.length === 0 || currentQueueIndex < 0 || currentQueueIndex >= currentActiveQueue.length) return;
+
+        const track = currentActiveQueue[currentQueueIndex];
+        const floatingPlayer = document.getElementById('floating-music-player');
+        const audioEl = document.getElementById('global-audio-element');
+        const titleEl = document.getElementById('current-playing-title');
+        const folderEl = document.getElementById('current-playing-folder');
+
+        titleEl.innerText = track.title;
+        folderEl.innerText = `Folder: ${track.folder || "Favorit"} (${currentQueueIndex + 1}/${currentActiveQueue.length})`;
+        
+        if (audioEl.src) URL.revokeObjectURL(audioEl.src);
+        audioEl.src = URL.createObjectURL(track.fileData);
+        
+        floatingPlayer.classList.add('active');
+        audioEl.play().catch(e => {
+            alert("Gagal memutar file audio.");
+        });
+    }
+
+    function playNextTrack() {
+        if (currentActiveQueue.length === 0) return;
+        currentQueueIndex++;
+        if (currentQueueIndex >= currentActiveQueue.length) {
+            currentQueueIndex = 0; 
+        }
+        playCurrentQueueItem();
+    }
+
+    function playPrevTrack() {
+        if (currentActiveQueue.length === 0) return;
+        currentQueueIndex--;
+        if (currentQueueIndex < 0) {
+            currentQueueIndex = currentActiveQueue.length - 1;
+        }
+        playCurrentQueueItem();
+    }
+
+    function closeFloatingMusic() {
+        const floatingPlayer = document.getElementById('floating-music-player');
+        const audioEl = document.getElementById('global-audio-element');
+        audioEl.pause();
+        audioEl.src = "";
+        floatingPlayer.classList.remove('active');
+    }
+
+    function deleteMusicTrack(trackId) {
+        if (confirm("Hapus lagu ini dari penyimpanan offline?")) {
+            const tx = db.transaction("offline_music", "readwrite");
+            const store = tx.objectStore("offline_music");
+            store.delete(trackId);
+            tx.oncomplete = function() {
+                loadMusicFoldersUI();
+                loadMusicStorageList();
+            };
+        }
+    }
+
+    // --- FITUR PEMUTAR VIDEO USB ---
+    function openVideoPlayerSlide() {
+        closeTopMenu();
+        document.getElementById('video-player-slide').classList.add('active');
+    }
+
+    function closeVideoPlayerSlide() {
+        document.getElementById('video-player-slide').classList.remove('active');
+    }
+
+    async function openFolderFromUsb() {
+        try {
+            const dirHandle = await window.showDirectoryPicker();
+            const videoGrid = document.getElementById('video-grid-container');
+            const countLabel = document.getElementById('video-count-label');
+            
+            videoGrid.innerHTML = "Memindai video & subtitle...";
+            countLabel.innerText = "Memindai direktori...";
+
+            const videoFiles = [];
+            window.usbVideoCache = window.usbVideoCache || {};
+            window.usbSubtitleCache = {}; 
+
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file') {
+                    const nameLower = entry.name.toLowerCase();
+                    if (nameLower.match(/\.(mp4|mkv|webm|avi|mov)$/)) {
+                        const file = await entry.getFile();
+                        videoFiles.push({ name: entry.name, file: file });
+                    } else if (nameLower.match(/\.(srt|vtt)$/)) {
+                        const file = await entry.getFile();
+                        window.usbSubtitleCache[entry.name] = file;
+                    }
+                }
+            }
+
+            videoGrid.innerHTML = "";
+            if (videoFiles.length === 0) {
+                countLabel.innerText = "Tidak ditemukan file video di folder ini.";
+                return;
+            }
+
+            countLabel.innerText = `Ditemukan ${videoFiles.length} file video:`;
+
+            videoFiles.forEach((vidObj) => {
+                const card = document.createElement('div');
+                card.className = 'video-item-card';
+                card.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">🎬</span>
+                        <span class="video-title" title="${vidObj.name}">${vidObj.name}</span>
+                    </div>
+                    <button class="btn-pdf-action" style="width: 100%; text-align: center;" onclick="playUsbVideo('${vidObj.name.replace(/'/g, "\\'")}')">Putar Video</button>
+                `;
+                videoGrid.appendChild(card);
+            });
+
+            videoFiles.forEach(v => {
+                window.usbVideoCache[v.name] = v.file;
+            });
+
+        } catch (err) {
+            console.log("Pemilihan folder dibatalkan atau tidak didukung browser.", err);
+        }
+    }
+
+    async function playUsbVideo(fileName) {
+        const file = window.usbVideoCache && window.usbVideoCache[fileName];
+        if (!file) {
+            alert("File video tidak ditemukan di cache memori sementara.");
+            return;
+        }
+
+        const activeSlide = document.getElementById('active-video-slide');
+        const videoPlayer = document.getElementById('mx-video-player');
+        const titleEl = document.getElementById('active-video-title');
+
+        titleEl.innerText = fileName;
+        
+        videoPlayer.innerHTML = '';
+        if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+
+        videoPlayer.src = URL.createObjectURL(file);
+        
+        const baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+        const subNames = Object.keys(window.usbSubtitleCache || {});
+        const matchingSubName = subNames.find(sub => sub.toLowerCase().includes(baseName.toLowerCase()));
+        
+        if (matchingSubName) {
+            try {
+                const subFile = window.usbSubtitleCache[matchingSubName];
+                let subText = await subFile.text();
+                
+                if (matchingSubName.toLowerCase().endsWith('.srt')) {
+                    subText = "WEBVTT\n\n" + subText.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+                }
+                
+                const subBlob = new Blob([subText], { type: 'text/vtt' });
+                const subUrl = URL.createObjectURL(subBlob);
+                
+                const track = document.createElement('track');
+                track.kind = 'subtitles';
+                track.label = matchingSubName;
+                track.srclang = 'id';
+                track.src = subUrl;
+                track.default = true; 
+                videoPlayer.appendChild(track);
+            } catch (err) {
+                console.error("Gagal memuat subtitle:", err);
+            }
+        }
+
+        const resumeKey = 'resume_vid_' + fileName;
+        const savedTime = localStorage.getItem(resumeKey);
+
+        videoPlayer.onloadedmetadata = () => {
+            if (savedTime && parseFloat(savedTime) > 0) {
+                videoPlayer.currentTime = parseFloat(savedTime);
+            }
+        };
+
+        videoPlayer.ontimeupdate = () => {
+            if (videoPlayer.currentTime > 0) {
+                localStorage.setItem(resumeKey, videoPlayer.currentTime);
+            }
+        };
+
+        activeSlide.classList.add('active');
+        videoPlayer.play();
+    }
+
+    function closeActiveVideo() {
+        const activeSlide = document.getElementById('active-video-slide');
+        const videoPlayer = document.getElementById('mx-video-player');
+        videoPlayer.pause();
+        
+        videoPlayer.ontimeupdate = null;
+        videoPlayer.onloadedmetadata = null;
+        
+        if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+        videoPlayer.src = "";
+        videoPlayer.innerHTML = ""; 
+        
+        activeSlide.classList.remove('active');
+    }
+
+    // --- FUNGSI UMUM ---
+    function closeModal() { document.getElementById('comic-modal').style.display = 'none'; }
+    function openAddComicModal() { document.getElementById('add-comic-modal').style.display = 'flex'; }
+
+    function closeAddComicModal() {
+        document.getElementById('add-comic-modal').style.display = 'none';
+        addComicForm.reset();
+        suggestionsBox.style.display = 'none';
+        fetchStatusEl.innerText = '';
+    }
+
+    addComicForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const title = document.getElementById('form-title').value;
+        const author = document.getElementById('form-author').value;
+        const totalVolumes = parseInt(document.getElementById('form-total-vol').value) || 1;
+        const type = document.querySelector('input[name="comic-type"]:checked').value;
+
+        const newComic = { id: Date.now(), title, author, totalVolumes, type };
+
+        comicCatalog.push(newComic);
+        localStorage.setItem('myComicCatalogFinalTextOnly', JSON.stringify(comicCatalog));
+        closeAddComicModal();
+        renderComics();
+    });
+
+    function deleteComic(event, id) {
+        event.stopPropagation();
+        if (confirm("Hapus komik ini dari katalog?")) {
+            comicCatalog = comicCatalog.filter(c => c.id !== id);
+            localStorage.setItem('myComicCatalogFinalTextOnly', JSON.stringify(comicCatalog));
+            delete ownedVolumesData[id];
+            localStorage.setItem('ownedVolumesDataFinalTextOnly', JSON.stringify(ownedVolumesData));
+            renderComics();
+        }
+    }
+
+    window.onclick = function (event) {
+        closeTopMenu();
+        if (event.target == document.getElementById('add-comic-modal')) closeAddComicModal();
+        if (event.target == document.getElementById('comic-modal')) closeModal();
+    };
+
+    searchInput.addEventListener('input', renderComics);
+    renderComics();
+</script>
+
+</body>
+</html>
